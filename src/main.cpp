@@ -64,7 +64,6 @@ void configModeCallback (WiFiManager *myWiFiManager)
  * \param[in] url URL to send the message to
  * \param[in] message Message to be sent
  * \brief Callback called when WiFiManager enters configuration mode
- * \warning The URL used for the HTTP connection is not the URL given as parameter. Same goes for the message
  *
  * Print the AP IP and SSID to Serial and make LED blink faster. Send a message to a url in JSON format
 */
@@ -74,9 +73,9 @@ void sendPostRequest(char *url, char *message)
   Serial.println("sendPostRequest");
   Serial.println(message);
   Serial.println(url);
-  http.begin(urlApi);
+  http.begin(url);
   http.addHeader("Content-Type", "application/json");
-  http.POST("{\"message\":\"Coucou\"}");
+  http.POST(message);
   http.writeToStream(&Serial);
   http.end();
 }
