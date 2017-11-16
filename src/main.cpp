@@ -24,7 +24,8 @@
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-const int     delayval  = 80;
+const int delayAnimation        = 80 ;
+const int delayUpdateValue      = 5000 ;
 unsigned int  wheelpos  = 0;
 unsigned int  strength  = 0;
 unsigned int  sample    = 0;
@@ -173,10 +174,10 @@ int measure()
 }
 
 /**
- * \fn void updatesat()
+ * \fn void updateStrength()
  * \brief
 */
-void updatesat()
+void updateStrength()
 {
   if(stat)
     digitalWrite(LED_BUILTIN, HIGH);
@@ -213,8 +214,8 @@ void setup()
   ticker.attach(0.6, tick);
 
   // Add timer functions to animate the LED strip and update ...
-  t.every(delayval, animate);
-  t.every(5000, updatesat);
+  t.every(delayAnimation, animate) ;
+  t.every(delayUpdateValue, updateStrength) ;
 
   // Tries to autoconnect to a network called "Noisey"
   if (!wifiManager.autoConnect("Noisey"))
