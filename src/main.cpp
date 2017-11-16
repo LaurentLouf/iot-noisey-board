@@ -26,10 +26,14 @@ Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + 
 
 const int delayAnimation        = 80 ;
 const int delayUpdateValue      = 5000 ;
-unsigned int  wheelpos  = 0;
-unsigned int  strength  = 0;
-unsigned int  sample    = 0;
-unsigned int  sampleavg = 1024;
+const int runningAverageMax     = 256 ;
+const int runningAverageFactor  = 230 ;
+
+unsigned int  wheelpos       = 0 ;
+unsigned int  strength       = 0 ;
+unsigned int  sample         = 0 ;
+unsigned int  runningAverage = 0 ;
+unsigned int  previousRunningAverage = 0 ;
 bool stat = 0;
 
 Ticker ticker;
@@ -81,6 +85,7 @@ void sendPostRequest(char *url, char *message)
   http.end();
 }
 
+
 /**
  * \fn void animate()
  * \brief Animate the LED strip according to the strength of the signal received
@@ -93,28 +98,51 @@ void sendPostRequest(char *url, char *message)
  *     - do not light other LEDs
  * At the end, increment the position of the beginning of the wheel (wheelpos)
 */
-void animate ()
+void animate()
 {
+  unsigned int hue, red, green, blue ;
+
   for ( int i = 0 ; i < NUMPIXELS ; i++ )
   {
-    if ( strength <= THRESHOLD )
+    if ( runningAverage <= THRESHOLD )
       pixels.setPixelColor( i, pixels.Color(0,0,0) ) ;
     else
     {
+      // Map the strength of the signal to a hue value : green is at 120 and red at 0
+      hue = map(1023 - runningAverage, 0, 1023, 0, 120);
+
       if ( i == wheelpos )
       {
-        pixels.setPixelColor(i,                pixels.Color(constrain(1*strength-THRESHOLD,1,255),    0, 0) ) ;
-        pixels.setPixelColor((i+1)%NUMPIXELS,  pixels.Color(constrain(1.15*strength-THRESHOLD,1,255), 0, 0) ) ;
-        pixels.setPixelColor((i+2)%NUMPIXELS,  pixels.Color(constrain(1.3*strength-THRESHOLD,1,255),  0, 0) ) ;
-        pixels.setPixelColor((i+3)%NUMPIXELS,  pixels.Color(constrain(1.45*strength-THRESHOLD,2,255), 0, 0) ) ;
-        pixels.setPixelColor((i+4)%NUMPIXELS,  pixels.Color(constrain(1.6*strength-THRESHOLD,2,255),  0, 0) ) ;
-        pixels.setPixelColor((i+5)%NUMPIXELS,  pixels.Color(constrain(1.75*strength-THRESHOLD,2,255), 0, 0) ) ;
-        pixels.setPixelColor((i+6)%NUMPIXELS,  pixels.Color(constrain(2*strength-THRESHOLD,3,255),    0, 0) ) ;
-        pixels.setPixelColor((i+7)%NUMPIXELS,  pixels.Color(constrain(2.25*strength-THRESHOLD,3,255), 0, 0) ) ;
-        pixels.setPixelColor((i+8)%NUMPIXELS,  pixels.Color(constrain(2.5*strength-THRESHOLD,3,255),  0, 0) ) ;
-        pixels.setPixelColor((i+9)%NUMPIXELS,  pixels.Color(constrain(2.75*strength-THRESHOLD,5,255), 0, 0) ) ;
-        pixels.setPixelColor((i+10)%NUMPIXELS, pixels.Color(constrain(2.85*strength-THRESHOLD,5,255), 0, 0) ) ;
-        pixels.setPixelColor((i+11)%NUMPIXELS, pixels.Color(constrain(3*strength-THRESHOLD,10,255),   0, 0) ) ;
+        if ( wheelpos == 0 )
+        {
+          Serial.print("hue ") ;
+          Serial.println(hue) ;
+        }
+
+        HSBToRGB(hue, 255, 127, &red, &green, &blue) ;
+        pixels.setPixelColor(i,                red, green, blue ) ;
+        HSBToRGB(hue, 255,  138, &red, &green, &blue) ;
+        pixels.setPixelColor((i+1)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  148, &red, &green, &blue) ;
+        pixels.setPixelColor((i+2)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  159, &red, &green, &blue) ;
+        pixels.setPixelColor((i+3)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  169, &red, &green, &blue) ;
+        pixels.setPixelColor((i+4)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  180, &red, &green, &blue) ;
+        pixels.setPixelColor((i+5)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  191, &red, &green, &blue) ;
+        pixels.setPixelColor((i+6)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  201, &red, &green, &blue) ;
+        pixels.setPixelColor((i+7)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  212, &red, &green, &blue) ;
+        pixels.setPixelColor((i+8)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  222, &red, &green, &blue) ;
+        pixels.setPixelColor((i+9)%NUMPIXELS,  red, green, blue ) ;
+        HSBToRGB(hue, 255,  233, &red, &green, &blue) ;
+        pixels.setPixelColor((i+10)%NUMPIXELS, red, green, blue ) ;
+        HSBToRGB(hue, 255,  244, &red, &green, &blue) ;
+        pixels.setPixelColor((i+11)%NUMPIXELS, red, green, blue ) ;
       }
       else if ( i > wheelpos+11 || i < wheelpos )
         pixels.setPixelColor(i, pixels.Color(0,0,0));
@@ -127,50 +155,27 @@ void animate ()
 /**
  * \fn int measure()
  * \brief Measure the average strength of the signal over a window of 50ms
- * \return The last value read of the strength of the signal
  *
- * During 50ms, get a value from the ADC and update the min and max values accordingly.
+ * During 50ms, get a value from the ADC and update the average for this set of samples
 */
-int measure()
+void measure()
 {
   unsigned long startMillis   = millis() ;
-  unsigned int  signalMax     = 0 ;
-  unsigned int  signalMin     = 1024 ;
   unsigned int  numberSamples = 0 ;
   unsigned int  sampleSum     = 0 ;
+  unsigned int  sampleAverage = 0 ;
 
   // Sample window width in mS (50 mS = 20Hz)
   while ( millis() - startMillis < 50 )
   {
     int sample = analogRead(A0);
     numberSamples++ ;
-    if ( sample < 1024 )
-    {
-      sampleSum+= sample ;
-      if (sample > signalMax)
-        signalMax = sample ;
-      else if (sample < signalMin)
-        signalMin = sample ;
-    }
+    sampleSum += sample ;
   }
 
-  if ( signalMax - signalMin < sampleavg )
-    sampleavg = constrain ( signalMax - signalMin, 0, 1023 ) ; // 10 = bruit intrinsèque
-
-/*
-  Serial.print(numberSamples);
-  Serial.print("\t") ;
-  Serial.print(signalMin);
-  Serial.print("\t") ;
-  Serial.print(signalMax) ;
-  Serial.print("\t") ;
-  Serial.print(sampleavg) ;
-  Serial.print("\t") ;*/
-  sampleavg = sampleSum / numberSamples ;/*
-  Serial.print(sampleavg) ;
-  Serial.print("\n") ;*/
-
-  return sample;
+  sampleAverage   = sampleSum / numberSamples ;
+  runningAverage  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
+  runningAverage  /= runningAverageMax ;
 }
 
 /**
@@ -184,15 +189,15 @@ void updateStrength()
   else
     digitalWrite(LED_BUILTIN, LOW);
 
-  strength=sampleavg-6;
-  Serial.print(strength);
-  Serial.print("\t");
-  strength=map(strength,0,1023,0, 255);
-  Serial.print(strength);
+  stat=!stat;
+
+  // Update the strength global var
+  Serial.print(previousRunningAverage);
+  Serial.print("\t") ;
+  Serial.print(runningAverage);
   Serial.print("\n");
 
-  sampleavg=1024;
-  stat=!stat;
+  previousRunningAverage = runningAverage ;
 }
 
 /**
