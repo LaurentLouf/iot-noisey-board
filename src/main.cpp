@@ -24,16 +24,16 @@
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
-const int delayAnimation        = 80 ;
-const int delayUpdateValue      = 5000 ;
-const int runningAverageMax     = 256 ;
-const int runningAverageFactor  = 230 ;
+const int16_t delayAnimation        = 80 ;
+const int32_t delayUpdateValue      = NUMPIXELS * delayAnimation ;
+const int16_t runningAverageMax     = 256 ;
+const int16_t runningAverageFactor  = 230 ;
 
-unsigned int  wheelpos       = 0 ;
-unsigned int  strength       = 0 ;
-unsigned int  sample         = 0 ;
-unsigned int  runningAverage = 0 ;
-unsigned int  previousRunningAverage = 0 ;
+byte wheelpos       = 0 ;
+int16_t sample      = 0 ;
+int16_t runningAverage = 0 ;
+int16_t previousRunningAverage = 0 ;
+int16_t strength = 0 ;
 bool stat = 0;
 
 Ticker ticker;
@@ -100,9 +100,10 @@ void sendPostRequest(char *url, char *message)
 */
 void animate()
 {
-  unsigned int hue, red, green, blue ;
+  int16_t hue ;
+  uint8_t red, green, blue ;
 
-  for ( int i = 0 ; i < NUMPIXELS ; i++ )
+  for ( byte i = 0 ; i < NUMPIXELS ; i++ )
   {
     if ( runningAverage <= THRESHOLD )
       pixels.setPixelColor( i, pixels.Color(0,0,0) ) ;
@@ -158,12 +159,13 @@ void animate()
  *
  * During 50ms, get a value from the ADC and update the average for this set of samples
 */
-void measure()
+int16_t measure()
 {
   unsigned long startMillis   = millis() ;
-  unsigned int  numberSamples = 0 ;
-  unsigned int  sampleSum     = 0 ;
-  unsigned int  sampleAverage = 0 ;
+  int16_t numberSamples = 0 ;
+  int32_t sampleSum     = 0 ;
+  int16_t sampleAverage = 0 ;
+  int32_t runningAverageUnscaled ;
 
   // Sample window width in mS (50 mS = 20Hz)
   while ( millis() - startMillis < 50 )
@@ -173,9 +175,11 @@ void measure()
     sampleSum += sample ;
   }
 
-  sampleAverage   = sampleSum / numberSamples ;
-  runningAverage  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
-  runningAverage  /= runningAverageMax ;
+  sampleAverage           = sampleSum / numberSamples ;
+  runningAverageUnscaled  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
+  runningAverage          = runningAverageUnscaled / runningAverageMax ;
+
+  return sampleAverage ;
 }
 
 /**
