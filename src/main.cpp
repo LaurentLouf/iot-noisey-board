@@ -33,6 +33,7 @@ byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
 int16_t runningAverage = 0 ;
 int16_t previousRunningAverage = 0 ;
+int16_t maxValueRunningAverage = 0 ;
 int16_t strength = 0 ;
 bool stat = 0;
 
@@ -103,23 +104,16 @@ void animate()
   int16_t hue ;
   uint8_t red, green, blue ;
 
+  hue = map(-strength, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
+
   for ( byte i = 0 ; i < NUMPIXELS ; i++ )
   {
     if ( runningAverage <= THRESHOLD )
       pixels.setPixelColor( i, pixels.Color(0,0,0) ) ;
     else
     {
-      // Map the strength of the signal to a hue value : green is at 120 and red at 0
-      hue = map(1023 - runningAverage, 0, 1023, 0, 120);
-
       if ( i == wheelpos )
       {
-        if ( wheelpos == 0 )
-        {
-          Serial.print("hue ") ;
-          Serial.println(hue) ;
-        }
-
         HSBToRGB(hue, 255, 127, &red, &green, &blue) ;
         pixels.setPixelColor(i,                red, green, blue ) ;
         HSBToRGB(hue, 255,  138, &red, &green, &blue) ;
@@ -166,6 +160,7 @@ int16_t measure()
   int32_t sampleSum     = 0 ;
   int16_t sampleAverage = 0 ;
   int32_t runningAverageUnscaled ;
+  int16_t maxLvl = 0 ;
 
   // Sample window width in mS (50 mS = 20Hz)
   while ( millis() - startMillis < 50 )
@@ -173,11 +168,16 @@ int16_t measure()
     int sample = analogRead(A0);
     numberSamples++ ;
     sampleSum += sample ;
+
+    if ( sample > maxLvl )
+      maxLvl = sample ;
   }
 
   sampleAverage           = sampleSum / numberSamples ;
   runningAverageUnscaled  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
   runningAverage          = runningAverageUnscaled / runningAverageMax ;
+  runningAverageUnscaled  = maxLvl * runningAverageFactor + maxValueRunningAverage * (runningAverageMax - runningAverageFactor) ;
+  maxValueRunningAverage  = runningAverageUnscaled / runningAverageMax ;
 
   return sampleAverage ;
 }
@@ -195,11 +195,11 @@ void updateStrength()
 
   stat=!stat;
 
+  strength = maxValueRunningAverage - runningAverage ;
+  strength = strength > 120 ? 120 : strength ;
+
   // Update the strength global var
-  Serial.print(previousRunningAverage);
-  Serial.print("\t") ;
-  Serial.print(runningAverage);
-  Serial.print("\n");
+  Serial.printf("previousAvg : %d, currentAvg %d, maxAvg %d, diff %d\n", previousRunningAverage, runningAverage, maxValueRunningAverage, maxValueRunningAverage - runningAverage );
 
   previousRunningAverage = runningAverage ;
 }
