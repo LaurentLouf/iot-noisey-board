@@ -21,6 +21,7 @@
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
 #define THRESHOLD      1
+#define SCALE_DELTA    10
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
@@ -34,7 +35,10 @@ int16_t sample      = 0 ;
 int16_t runningAverage = 0 ;
 int16_t previousRunningAverage = 0 ;
 int16_t maxValueRunningAverage = 0 ;
+int16_t previousMaxValueRunningAverage = 0 ;
 int16_t strength = 0 ;
+int32_t shiftedHue = 0 ;
+int16_t deltaHue = 0 ;
 bool stat = 0;
 
 Ticker ticker;
@@ -101,47 +105,20 @@ void sendPostRequest(char *url, char *message)
 */
 void animate()
 {
-  int16_t hue ;
   uint8_t red, green, blue ;
+  int16_t hue ;
 
-  hue = map(-strength, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
+  shiftedHue += deltaHue ;
+  hue = shiftedHue >> SCALE_DELTA ;
+  HSBToRGB(hue, 255, 255, &red, &green, &blue) ;
+  uint32_t colorOn = pixels.Color(red, green, blue);
+  uint32_t colorOff = pixels.Color(0, 0, 0);
+  //Serial.println(shiftedHue) ;
 
-  for ( byte i = 0 ; i < NUMPIXELS ; i++ )
+  for ( byte i = 0 ; i < NUMPIXELS >> 1 ; i++ )
   {
-    if ( runningAverage <= THRESHOLD )
-      pixels.setPixelColor( i, pixels.Color(0,0,0) ) ;
-    else
-    {
-      if ( i == wheelpos )
-      {
-        HSBToRGB(hue, 255, 127, &red, &green, &blue) ;
-        pixels.setPixelColor(i,                red, green, blue ) ;
-        HSBToRGB(hue, 255,  138, &red, &green, &blue) ;
-        pixels.setPixelColor((i+1)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  148, &red, &green, &blue) ;
-        pixels.setPixelColor((i+2)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  159, &red, &green, &blue) ;
-        pixels.setPixelColor((i+3)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  169, &red, &green, &blue) ;
-        pixels.setPixelColor((i+4)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  180, &red, &green, &blue) ;
-        pixels.setPixelColor((i+5)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  191, &red, &green, &blue) ;
-        pixels.setPixelColor((i+6)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  201, &red, &green, &blue) ;
-        pixels.setPixelColor((i+7)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  212, &red, &green, &blue) ;
-        pixels.setPixelColor((i+8)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  222, &red, &green, &blue) ;
-        pixels.setPixelColor((i+9)%NUMPIXELS,  red, green, blue ) ;
-        HSBToRGB(hue, 255,  233, &red, &green, &blue) ;
-        pixels.setPixelColor((i+10)%NUMPIXELS, red, green, blue ) ;
-        HSBToRGB(hue, 255,  244, &red, &green, &blue) ;
-        pixels.setPixelColor((i+11)%NUMPIXELS, red, green, blue ) ;
-      }
-      else if ( i > wheelpos+11 || i < wheelpos )
-        pixels.setPixelColor(i, pixels.Color(0,0,0));
-    }
+    pixels.setPixelColor(( wheelpos + i ) % NUMPIXELS, colorOn ) ;
+    pixels.setPixelColor(( wheelpos - i + NUMPIXELS ) % NUMPIXELS, colorOff ) ;
   }
   pixels.show();
   wheelpos = ( wheelpos + 1 ) % ( NUMPIXELS - 1 ) ;
@@ -188,6 +165,9 @@ int16_t measure()
 */
 void updateStrength()
 {
+  int16_t nextHue ;
+  float   delta ;
+
   if(stat)
     digitalWrite(LED_BUILTIN, HIGH);
   else
@@ -195,13 +175,19 @@ void updateStrength()
 
   stat=!stat;
 
-  strength = maxValueRunningAverage - runningAverage ;
-  strength = strength > 120 ? 120 : strength ;
+  nextHue = maxValueRunningAverage - runningAverage ;
+  nextHue = nextHue > 120 ? 120 : nextHue ;
+  nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
+  delta = (float) ( ( nextHue << SCALE_DELTA ) - shiftedHue ) / (float) ( NUMPIXELS - 1 ) ;
+  deltaHue = delta ;
 
   // Update the strength global var
-  Serial.printf("previousAvg : %d, currentAvg %d, maxAvg %d, diff %d\n", previousRunningAverage, runningAverage, maxValueRunningAverage, maxValueRunningAverage - runningAverage );
+//  Serial.printf("previousAvg : %d, currentAvg %d, maxAvg %d, diff %d, ", previousRunningAverage, runningAverage, maxValueRunningAverage, maxValueRunningAverage - runningAverage ) ;
+  //Serial.printf("cH %d nh %d, d %d\n", shiftedHue, nextHue << SCALE_DELTA, deltaHue );
 
-  previousRunningAverage = runningAverage ;
+
+  previousRunningAverage          = runningAverage ;
+  previousMaxValueRunningAverage  = maxValueRunningAverage ;
 }
 
 /**
