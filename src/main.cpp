@@ -20,7 +20,7 @@
 #define urlApi "http://0360276d.ngrok.io/"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
-#define THRESHOLD          1
+#define THRESHOLD      1
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
@@ -212,12 +212,13 @@ void setup()
 {
   WiFiManager wifiManager;
 
-  // Initialize serial communication, LED strip, Wifi Manager and the pin of the built-in LED as an output pin
+  // Initialize serial communicatio, Wifi Manager and the pin of the built-in LED as an output pin
   Serial.begin(9600);
   pinMode(BUILTIN_LED, OUTPUT);
+  wifiManager.setAPCallback(configModeCallback);
+  // Initiate LED strip
   pixels.begin();
   pixels.show() ;
-  wifiManager.setAPCallback(configModeCallback);
 
   // Start blinking the built-in LED repeatedly
   ticker.attach(0.6, tick);
@@ -230,7 +231,6 @@ void setup()
   if (!wifiManager.autoConnect("Noisey"))
   {
     Serial.println("failed to connect and hit timeout");
-    //reset and try again, or maybe put it to deep sleep
     ESP.reset();
     delay(1000);
   }
@@ -251,11 +251,6 @@ void setup()
 */
 void loop()
 {
-  // put your main code here, to run repeatedly:
-  int measureResult = 0;
-  char test[] = "";
-  measureResult = measure();
-  //test += measureResult;
+  measure();
   t.update();
-  //sendPostRequest(urlApi, test);
 }
