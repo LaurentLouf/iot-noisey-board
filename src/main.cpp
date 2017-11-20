@@ -141,7 +141,7 @@ int16_t measure()
   // Sample window width in mS (50 mS = 20Hz)
   while ( millis() - startMillis < 50 )
   {
-    int sample = analogRead(A0);
+    int16_t sample = analogRead(A0);
     numberSamples++ ;
     sampleSum += sample ;
 
