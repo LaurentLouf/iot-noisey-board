@@ -225,6 +225,10 @@ void setup()
   ticker.detach();
   digitalWrite(BUILTIN_LED, LOW);
 
+  // Perform a first measure to initialize the running averages
+  runningAverage = measure() ;
+  maxValueRunningAverage = runningAverage ;
+  previousRunningAverage = runningAverage ;
 }
 
 
