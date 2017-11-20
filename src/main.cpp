@@ -25,6 +25,7 @@
 
 const int16_t delayAnimation            = 80 ;
 const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;
+const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ;
 const int16_t runningAverageMax         = 256 ;
 const int16_t runningAverageFactor      = 230 ;
 
@@ -165,7 +166,6 @@ int16_t measure()
 void updateStrength()
 {
   int16_t nextHue ;
-  float   delta ;
 
   // Change the state of the built-in LED
   stat=!stat;
@@ -178,8 +178,7 @@ void updateStrength()
   nextHue = maxValueRunningAverage - runningAverage ;
   nextHue = nextHue > 120 ? 120 : nextHue ;
   nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
-  delta = (float) ( ( nextHue << SCALE_DELTA ) - shiftedHue ) / (float) ( NUMPIXELS - 1 ) ;
-  deltaHue = delta ;
+  deltaHue = ( (nextHue << SCALE_DELTA) - shiftedHue ) / nbAnimationBetweenUpdates ;
 
   Serial.printf("cH %d nH %d, d %d\n", shiftedHue, nextHue << SCALE_DELTA, deltaHue );
 
