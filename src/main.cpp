@@ -20,14 +20,13 @@
 #define urlApi "http://0360276d.ngrok.io/"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
-#define THRESHOLD      1
 #define SCALE_DELTA    10 /*!< Number of bits to shift the value of hue to apply delta between current and next values */
 
-const int16_t delayAnimation            = 80 ;
-const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;
-const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ;
-const int16_t runningAverageMax         = 256 ;
-const int16_t runningAverageFactor      = 230 ;
+const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip */
+const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed */
+const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ; /*!< Number of animations of the LED strip between two updates of the color */
+const int16_t runningAverageMax         = 256 ;                               /*!< The max value of the factor used to compute the running averages */
+const int16_t runningAverageFactor      = 230 ;                               /*!< The factor used for the running averages */
 
 byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
@@ -35,8 +34,8 @@ int16_t runningAverage = 0 ;
 int16_t previousRunningAverage = 0 ;
 int16_t maxValueRunningAverage = 0 ;
 int16_t previousMaxValueRunningAverage = 0 ;
-int32_t shiftedHue = 0 ;
-int16_t deltaHue = 0 ;
+int32_t shiftedHue  = 120 << SCALE_DELTA ;
+int16_t deltaHue    = 0 ;
 bool stat = 0;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
@@ -72,9 +71,7 @@ void configModeCallback (WiFiManager *myWiFiManager)
  * \fn void sendPostRequest(char *url, char *message)
  * \param[in] url URL to send the message to
  * \param[in] message Message to be sent
- * \brief Callback called when WiFiManager enters configuration mode
- *
- * Print the AP IP and SSID to Serial and make LED blink faster. Send a message to a url in JSON format
+ * \brief Send a message (JSON) to an URL using HTTP POST
 */
 void sendPostRequest(char *url, char *message)
 {
@@ -92,42 +89,43 @@ void sendPostRequest(char *url, char *message)
 
 /**
  * \fn void animate()
- * \brief Animate the LED strip according to the strength of the signal received
- * \note The code could use a bit of rework to better reflect the logic behind it
+ * \brief Animate the LED strip
  *
  * Animate the LED strip according to the following rules :
- *   - if the strength is below the threshold, there should be no light at all
- *   - if the strength is above the threshold :
- *     - light the LEDs between wheelpos and wheelpos+11 (modulo the number of LEDs in the strip) according to the strength
- *     - do not light other LEDs
- * At the end, increment the position of the beginning of the wheel (wheelpos)
+ *   - light the LEDs between wheelpos and wheelpos+11 (modulo the number of LEDs in the strip)
+ *   - do not light other LEDs
+ * The current color of the LED strip is updated at each call with the delta computed periodically. At the end, increment the position of the beginning of the wheel (wheelpos).
 */
 void animate()
 {
   uint8_t red, green, blue ;
   int16_t hue ;
+  uint32_t colorOn, colorOff ;
 
+  // Update the hue and create the color corresponding
   shiftedHue += deltaHue ;
   hue = shiftedHue >> SCALE_DELTA ;
   HSBToRGB(hue, 255, 255, &red, &green, &blue) ;
-  uint32_t colorOn = pixels.Color(red, green, blue);
-  uint32_t colorOff = pixels.Color(0, 0, 0);
-  //Serial.println(shiftedHue) ;
+  colorOn   = pixels.Color(red, green, blue);
+  colorOff  = pixels.Color(0, 0, 0);
 
+  // Set the colors for each pixel of the strip. Half will be lighted, the other half no.
   for ( byte i = 0 ; i < NUMPIXELS >> 1 ; i++ )
   {
     pixels.setPixelColor(( wheelpos + i ) % NUMPIXELS, colorOn ) ;
     pixels.setPixelColor(( wheelpos - i + NUMPIXELS ) % NUMPIXELS, colorOff ) ;
   }
+
+  // Show the current state of pixels and update the wheel position
   pixels.show();
   wheelpos = ( wheelpos + 1 ) % ( NUMPIXELS - 1 ) ;
 }
 
 /**
  * \fn int measure()
- * \brief Measure the average strength of the signal over a window of 50ms
+ * \brief Measure the average and max strength of the signal over a window and over long periods of time
  *
- * During 50ms, get a value from the ADC and update the average for this set of samples
+ * During the width of the window, get a value from the ADC and update the average for this set of samples. At the end, update the running averages of the average and max values of the signal.
 */
 int16_t measure()
 {
@@ -160,10 +158,10 @@ int16_t measure()
 }
 
 /**
- * \fn void updateStrength()
- * \brief
+ * \fn void updateColor()
+ * \brief Update the color to be displayed according to the signal strength
 */
-void updateStrength()
+void updateColor()
 {
   int16_t nextHue ;
 
@@ -195,7 +193,7 @@ void setup()
 {
   WiFiManager wifiManager;
 
-  // Initialize serial communicatio, Wifi Manager and the pin of the built-in LED as an output pin
+  // Initialize serial communication, Wifi Manager and the pin of the built-in LED as an output pin
   Serial.begin(9600);
   pinMode(BUILTIN_LED, OUTPUT);
   wifiManager.setAPCallback(configModeCallback);
@@ -208,7 +206,7 @@ void setup()
 
   // Add timer functions to animate the LED strip and update the colors to be displayed
   t.every(delayAnimation, animate) ;
-  t.every(delayUpdateValue, updateStrength) ;
+  t.every(delayUpdateValue, updateColor) ;
 
   // Tries to autoconnect to a network called "Noisey"
   if (!wifiManager.autoConnect("Noisey"))
