@@ -21,14 +21,12 @@
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
 #define THRESHOLD      1
-#define SCALE_DELTA    10
+#define SCALE_DELTA    10 /*!< Number of bits to shift the value of hue to apply delta between current and next values */
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
-
-const int16_t delayAnimation        = 80 ;
-const int32_t delayUpdateValue      = NUMPIXELS * delayAnimation ;
-const int16_t runningAverageMax     = 256 ;
-const int16_t runningAverageFactor  = 230 ;
+const int16_t delayAnimation            = 80 ;
+const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;
+const int16_t runningAverageMax         = 256 ;
+const int16_t runningAverageFactor      = 230 ;
 
 byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
@@ -36,11 +34,11 @@ int16_t runningAverage = 0 ;
 int16_t previousRunningAverage = 0 ;
 int16_t maxValueRunningAverage = 0 ;
 int16_t previousMaxValueRunningAverage = 0 ;
-int16_t strength = 0 ;
 int32_t shiftedHue = 0 ;
 int16_t deltaHue = 0 ;
 bool stat = 0;
 
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker ticker;
 Timer t;
 
@@ -146,13 +144,14 @@ int16_t measure()
     numberSamples++ ;
     sampleSum += sample ;
 
-    if ( sample > maxLvl )
-      maxLvl = sample ;
+    maxLvl = sample > maxLvl ? sample : maxLvl ;
   }
 
   sampleAverage           = sampleSum / numberSamples ;
+  // Running average for the average value of samples
   runningAverageUnscaled  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
   runningAverage          = runningAverageUnscaled / runningAverageMax ;
+  // Running average for the max value of samples
   runningAverageUnscaled  = maxLvl * runningAverageFactor + maxValueRunningAverage * (runningAverageMax - runningAverageFactor) ;
   maxValueRunningAverage  = runningAverageUnscaled / runningAverageMax ;
 
@@ -168,24 +167,23 @@ void updateStrength()
   int16_t nextHue ;
   float   delta ;
 
+  // Change the state of the built-in LED
+  stat=!stat;
   if(stat)
     digitalWrite(LED_BUILTIN, HIGH);
   else
     digitalWrite(LED_BUILTIN, LOW);
 
-  stat=!stat;
-
+  // Compute the value of the next hue and delta between current and next hue
   nextHue = maxValueRunningAverage - runningAverage ;
   nextHue = nextHue > 120 ? 120 : nextHue ;
   nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
   delta = (float) ( ( nextHue << SCALE_DELTA ) - shiftedHue ) / (float) ( NUMPIXELS - 1 ) ;
   deltaHue = delta ;
 
-  // Update the strength global var
-//  Serial.printf("previousAvg : %d, currentAvg %d, maxAvg %d, diff %d, ", previousRunningAverage, runningAverage, maxValueRunningAverage, maxValueRunningAverage - runningAverage ) ;
-  //Serial.printf("cH %d nh %d, d %d\n", shiftedHue, nextHue << SCALE_DELTA, deltaHue );
+  Serial.printf("cH %d nH %d, d %d\n", shiftedHue, nextHue << SCALE_DELTA, deltaHue );
 
-
+  // Update the previous values of the running averages
   previousRunningAverage          = runningAverage ;
   previousMaxValueRunningAverage  = maxValueRunningAverage ;
 }
@@ -209,7 +207,7 @@ void setup()
   // Start blinking the built-in LED repeatedly
   ticker.attach(0.6, tick);
 
-  // Add timer functions to animate the LED strip and update ...
+  // Add timer functions to animate the LED strip and update the colors to be displayed
   t.every(delayAnimation, animate) ;
   t.every(delayUpdateValue, updateStrength) ;
 
