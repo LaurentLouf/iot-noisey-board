@@ -25,8 +25,9 @@
 const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip */
 const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed */
 const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ; /*!< Number of animations of the LED strip between two updates of the color */
-const int16_t runningAverageMax         = 256 ;                               /*!< The max value of the factor used to compute the running averages */
-const int16_t runningAverageFactor      = 230 ;                               /*!< The factor used for the running averages */
+const int16_t runningAverageBitScale    = 8 ;                                 /*!< The number of bits for the running average factor */
+const int16_t runningAverageFactorOld   = 230 ;                               /*!< The factor to apply to the old value for the running average */
+const int16_t runningAverageFactorNew   = (1 << runningAverageBitScale) - runningAverageFactorOld ; /*!< The factor to apply to the new value for the running average */
 
 byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
@@ -148,11 +149,11 @@ int16_t measure()
 
   sampleAverage           = sampleSum / numberSamples ;
   // Running average for the average value of samples
-  runningAverageUnscaled  = sampleAverage * runningAverageFactor + runningAverage * (runningAverageMax - runningAverageFactor) ;
-  runningAverage          = runningAverageUnscaled / runningAverageMax ;
+  runningAverageUnscaled  = sampleAverage * runningAverageFactorNew + runningAverage * runningAverageFactorOld ;
+  runningAverage          = runningAverageUnscaled >> runningAverageBitScale ;
   // Running average for the max value of samples
-  runningAverageUnscaled  = maxLvl * runningAverageFactor + maxValueRunningAverage * (runningAverageMax - runningAverageFactor) ;
-  maxValueRunningAverage  = runningAverageUnscaled / runningAverageMax ;
+  runningAverageUnscaled  = maxLvl * runningAverageFactorNew + maxValueRunningAverage * runningAverageFactorOld ;
+  maxValueRunningAverage  = runningAverageUnscaled >> runningAverageBitScale ;
 
   return sampleAverage ;
 }
