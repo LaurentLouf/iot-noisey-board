@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <Ticker.h>
 #include <Adafruit_NeoPixel.h>
+#include <ArduinoJson.h>
 // Libraries for the ESP
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -17,7 +18,7 @@
 #include "Timer.h"
 #include "color.h"
 
-#define urlApi "http://0360276d.ngrok.io/"
+#define HOST_API "http://192.168.1.148:3000/"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
 #define SCALE_DELTA    10 /*!< Number of bits to shift the value of hue to apply delta between current and next values */
@@ -69,21 +70,30 @@ void configModeCallback (WiFiManager *myWiFiManager)
 }
 
 /**
- * \fn void sendPostRequest(char *url, char *message)
- * \param[in] url URL to send the message to
- * \param[in] message Message to be sent
+ * \fn void sendPostRequest(char *i_endPoint, char *i_message, int16_t &o_HTTPCode, String &o_payload)
+ * \param[in] i_endPoint End point to send the message to
+ * \param[in] i_message Message to be sent in JSON format
+ * \param[out] o_HTTPCode HTTP code returned by the server
+ * \param[out] o_payload Payload received from the server
  * \brief Send a message (JSON) to an URL using HTTP POST
 */
-void sendPostRequest(char *url, char *message)
+void sendPostRequest(char *i_endPoint, char *i_message, int16_t *o_HTTPCode, String *o_payload)
 {
   HTTPClient http;
-  Serial.println("sendPostRequest");
-  Serial.println(message);
-  Serial.println(url);
-  http.begin(url);
+  char completeURL[256] ;
+
+  // Build the complete URL
+  strcpy(completeURL, HOST_API) ;
+  if ( i_endPoint[0] == '/' && strlen(i_endPoint) > 1 )
+    strcat(completeURL, &i_endPoint[1]) ;
+  else if ( i_endPoint[0] != '/' )
+    strcat(completeURL, i_endPoint) ;
+
+  // Perform the POST
+  http.begin(completeURL);
   http.addHeader("Content-Type", "application/json");
-  http.POST(message);
-  http.writeToStream(&Serial);
+  *o_HTTPCode = http.POST(i_message);
+  *o_payload  = http.getString();
   http.end();
 }
 
@@ -164,7 +174,10 @@ int16_t measure()
 */
 void updateColor()
 {
-  int16_t nextHue ;
+  int16_t nextHue, HTTPCode ;
+  StaticJsonBuffer<200> jsonBuffer;
+  char message[128] ;
+  String payload ;
 
   // Change the state of the built-in LED
   stat=!stat;
@@ -193,6 +206,9 @@ void updateColor()
 void setup()
 {
   WiFiManager wifiManager;
+  String response ;
+  StaticJsonBuffer<128> jsonBuffer;
+  int16_t HTTPCode ;
 
   // Initialize serial communication, Wifi Manager and the pin of the built-in LED as an output pin
   Serial.begin(9600);
@@ -217,10 +233,23 @@ void setup()
     delay(1000);
   }
 
-  // If it managed to connect, send a message to serial and to the server. Then stop the blinking of the LED and make sure it is off
-  char messageToApi[] = "{\"message\":\"Coucou\"}";
-  Serial.println("connected...yeey :)");
-  sendPostRequest(urlApi, messageToApi);
+  // If it managed to connect, send a message to the server
+  char messageToApi[256] ;
+  sprintf(messageToApi, "{\"id\":\"%s\"}", WiFi.macAddress().c_str() ) ;
+  Serial.println("Connected, sending ID to server.");
+  sendPostRequest("/api/device", messageToApi, &HTTPCode, &response);
+
+  // Analyze the response from the server
+  if ( HTTPCode == 200 )
+  {
+  }
+  else
+  {
+    Serial.println(HTTPCode) ;
+    Serial.println(response) ;
+  }
+
+  // Stop the blinking of the LED and make sure it is off
   ticker.detach();
   digitalWrite(BUILTIN_LED, LOW);
 
