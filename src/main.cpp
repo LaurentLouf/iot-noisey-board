@@ -30,6 +30,7 @@ const int16_t runningAverageBitScale    = 8 ;                                 /*
 const int16_t runningAverageFactorOld   = 230 ;                               /*!< The factor to apply to the old value for the running average */
 const int16_t runningAverageFactorNew   = (1 << runningAverageBitScale) - runningAverageFactorOld ; /*!< The factor to apply to the new value for the running average */
 
+char shortID[5]     = {'\0'} ;
 byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
 int16_t runningAverage = 0 ;
@@ -242,6 +243,8 @@ void setup()
   // Analyze the response from the server
   if ( HTTPCode == 200 )
   {
+    JsonObject& root = jsonBuffer.parseObject(response);
+    strncpy(shortID, root["shortID"], 4) ;
   }
   else
   {
