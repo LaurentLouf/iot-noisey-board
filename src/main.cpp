@@ -148,8 +148,8 @@ int16_t measure()
   int32_t runningAverageUnscaled ;
   int16_t maxLvl = 0 ;
 
-  // Sample window width in mS (50 mS = 20Hz)
-  while ( millis() - startMillis < 50 )
+  // Sample window width in mS
+  while ( millis() - startMillis < 20 )
   {
     int16_t sample = analogRead(A0);
     numberSamples++ ;
