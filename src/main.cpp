@@ -198,6 +198,13 @@ void updateColor()
   // Update the previous values of the running averages
   previousRunningAverage          = runningAverage ;
   previousMaxValueRunningAverage  = maxValueRunningAverage ;
+
+  // Create and send a post request containing the data
+  JsonObject& root  = jsonBuffer.createObject();
+  root["id"]        = shortID ;
+  root["noise"]     = (int16_t) (maxValueRunningAverage - runningAverage) ;
+  root.printTo(message, sizeof(message)) ;
+  //sendPostRequest("/api/data", message, &HTTPCode, &payload) ;
 }
 
 /**
