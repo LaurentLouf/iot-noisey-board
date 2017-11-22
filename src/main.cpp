@@ -45,6 +45,7 @@ bool stat = 0;
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
 Timer t;
+HTTPClient http ;
 
 /**
  * \fn void tick()
@@ -81,7 +82,6 @@ void configModeCallback (WiFiManager *myWiFiManager)
 */
 void sendPostRequest(char *i_endPoint, char *i_message, int16_t *o_HTTPCode, String *o_payload)
 {
-  HTTPClient http;
   char completeURL[256] ;
 
   // Build the complete URL
@@ -229,6 +229,8 @@ void setup()
   // Initiate LED strip
   pixels.begin();
   pixels.show() ;
+  // Initiate HTTP client
+  http.setReuse(true) ;
 
 
   // Start blinking the built-in LED repeatedly
@@ -251,8 +253,12 @@ void setup()
   // Analyze the response from the server
   if ( HTTPCode == 200 )
   {
+    String HTTPUserAgent = "Noisey " ;
     JsonObject& root = jsonBuffer.parseObject(response);
     strncpy(shortID, root["shortID"], 4) ;
+    Serial.printf("Received short ID from server %s\n", shortID) ;
+    HTTPUserAgent += shortID ;
+    http.setUserAgent(HTTPUserAgent) ;
   }
   else
   {
