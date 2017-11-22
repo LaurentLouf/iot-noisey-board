@@ -25,6 +25,7 @@
 
 const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip */
 const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed */
+const int32_t delayDataServer           = 10000 ;                             /*!< Delay betwwen two POST requests to the distant server, in ms */
 const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ; /*!< Number of animations of the LED strip between two updates of the color */
 const int16_t runningAverageBitScale    = 8 ;                                 /*!< The number of bits for the running average factor */
 const int16_t runningAverageFactorOld   = 230 ;                               /*!< The factor to apply to the old value for the running average */
@@ -94,10 +95,32 @@ void sendPostRequest(char *i_endPoint, char *i_message, int16_t *o_HTTPCode, Str
   http.begin(completeURL);
   http.addHeader("Content-Type", "application/json");
   *o_HTTPCode = http.POST(i_message);
-  *o_payload  = http.getString();
+  if ( o_payload != NULL )
+    *o_payload  = http.getString();
   http.end();
 }
 
+
+/**
+ * \fn void sendDataServer()
+ * \brief Send data to the server
+*/
+void sendDataServer()
+{
+  int16_t HTTPCode = 0 ;
+  int32_t millisSend ;
+  char message[128] ;
+  String payload ;
+  StaticJsonBuffer<200> jsonBuffer;
+
+  JsonObject& root  = jsonBuffer.createObject();
+  root["id"]        = shortID ;
+  root["noise"]     = (int16_t) (maxValueRunningAverage - runningAverage) ;
+  root.printTo(message, sizeof(message)) ;
+  millisSend  = millis()  ;
+  sendPostRequest("/api/data", message, &HTTPCode, NULL) ;
+  Serial.println(millis() - millisSend) ;
+}
 
 /**
  * \fn void animate()
@@ -175,17 +198,7 @@ int16_t measure()
 */
 void updateColor()
 {
-  int16_t nextHue, HTTPCode ;
-  StaticJsonBuffer<200> jsonBuffer;
-  char message[128] ;
-  String payload ;
-
-  // Change the state of the built-in LED
-  stat=!stat;
-  if(stat)
-    digitalWrite(LED_BUILTIN, HIGH);
-  else
-    digitalWrite(LED_BUILTIN, LOW);
+  int16_t nextHue ;
 
   // Compute the value of the next hue and delta between current and next hue
   nextHue = maxValueRunningAverage - runningAverage ;
@@ -198,13 +211,6 @@ void updateColor()
   // Update the previous values of the running averages
   previousRunningAverage          = runningAverage ;
   previousMaxValueRunningAverage  = maxValueRunningAverage ;
-
-  // Create and send a post request containing the data
-  JsonObject& root  = jsonBuffer.createObject();
-  root["id"]        = shortID ;
-  root["noise"]     = (int16_t) (maxValueRunningAverage - runningAverage) ;
-  root.printTo(message, sizeof(message)) ;
-  //sendPostRequest("/api/data", message, &HTTPCode, &payload) ;
 }
 
 /**
@@ -267,6 +273,7 @@ void setup()
   runningAverage = measure() ;
   maxValueRunningAverage = runningAverage ;
   previousRunningAverage = runningAverage ;
+  t.every(delayDataServer, sendDataServer) ;
 }
 
 
