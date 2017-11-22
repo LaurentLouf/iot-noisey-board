@@ -43,7 +43,7 @@ int16_t deltaHue    = 0 ;
 bool stat = 0;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
-Ticker ticker;
+Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
 Timer t;
 
 /**
@@ -68,7 +68,7 @@ void configModeCallback (WiFiManager *myWiFiManager)
   Serial.println("Entered config mode");
   Serial.println(WiFi.softAPIP());
   Serial.println(myWiFiManager->getConfigPortalSSID());
-  ticker.attach(0.2, tick);
+  tickerLED.attach(0.2, tick);
 }
 
 /**
@@ -162,7 +162,7 @@ void animate()
  *
  * During the width of the window, get a value from the ADC and update the average for this set of samples. At the end, update the running averages of the average and max values of the signal.
 */
-int16_t measure()
+void measure()
 {
   unsigned long startMillis   = millis() ;
   int16_t numberSamples = 0 ;
@@ -188,8 +188,6 @@ int16_t measure()
   // Running average for the max value of samples
   runningAverageUnscaled  = maxLvl * runningAverageFactorNew + maxValueRunningAverage * runningAverageFactorOld ;
   maxValueRunningAverage  = runningAverageUnscaled >> runningAverageBitScale ;
-
-  return sampleAverage ;
 }
 
 /**
@@ -232,12 +230,9 @@ void setup()
   pixels.begin();
   pixels.show() ;
 
-  // Start blinking the built-in LED repeatedly
-  ticker.attach(0.6, tick);
 
-  // Add timer functions to animate the LED strip and update the colors to be displayed
-  t.every(delayAnimation, animate) ;
-  t.every(delayUpdateValue, updateColor) ;
+  // Start blinking the built-in LED repeatedly
+  tickerLED.attach(0.6, tick);
 
   // Tries to autoconnect to a network called "Noisey"
   if (!wifiManager.autoConnect("Noisey"))
@@ -265,14 +260,16 @@ void setup()
     Serial.println(response) ;
   }
 
-  // Stop the blinking of the LED and make sure it is off
-  ticker.detach();
-  digitalWrite(BUILTIN_LED, LOW);
-
   // Perform a first measure to initialize the running averages
-  runningAverage = measure() ;
-  maxValueRunningAverage = runningAverage ;
-  previousRunningAverage = runningAverage ;
+  measure() ;
+  previousRunningAverage          = runningAverage ;
+  previousMaxValueRunningAverage  = maxValueRunningAverage ;
+
+  //
+  tickerLED.attach_ms(delayUpdateValue, tick);
+  tickerMeasure.attach_ms(delayAnimation, measure) ;
+  tickerAnimate.attach_ms(delayAnimation, animate) ;
+  tickerUpdateColor.attach_ms(delayUpdateValue, updateColor) ;
   t.every(delayDataServer, sendDataServer) ;
 }
 
@@ -283,6 +280,5 @@ void setup()
 */
 void loop()
 {
-  measure();
   t.update();
 }
