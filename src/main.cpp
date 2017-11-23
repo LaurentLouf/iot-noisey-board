@@ -25,8 +25,8 @@
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
 #define SCALE_DELTA    10 /*!< Number of bits to shift the value of hue to apply delta between current and next values */
 
-const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip */
-const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed */
+const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip, in ms */
+const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed, in ms */
 const int32_t delayDataServer           = 10000 ;                             /*!< Delay betwwen two POST requests to the distant server, in ms */
 const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ; /*!< Number of animations of the LED strip between two updates of the color */
 const int16_t runningAverageBitScale    = 8 ;                                 /*!< The number of bits for the running average factor */
