@@ -4,7 +4,7 @@
 
 bool writeOffsetToMemory( int8_t i_offset )
 {
-  if ( i_offset >= 0 && i_offset < 100 && EEPROM.read(addrOffset) != i_offset )
+  if ( i_offset >= configOffsetMin && i_offset <= configOffsetMax && EEPROM.read(addrOffset) != i_offset )
   {
     EEPROM.write(addrOffset, i_offset) ;
     return true ;
@@ -15,7 +15,7 @@ bool writeOffsetToMemory( int8_t i_offset )
 
 bool writeSensitivityToMemory( int8_t i_sensitivity )
 {
-  if ( i_sensitivity >= 1 && i_sensitivity < 10 && EEPROM.read(addrSensitivity) != i_sensitivity )
+  if ( i_sensitivity >= configSensitivityMin && i_sensitivity <= configSensitivityMax && EEPROM.read(addrSensitivity) != i_sensitivity )
   {
     EEPROM.write(addrSensitivity, i_sensitivity) ;
     return true ;
@@ -26,11 +26,20 @@ bool writeSensitivityToMemory( int8_t i_sensitivity )
 
 int8_t readOffsetFromMemory( void )
 {
-  return EEPROM.read(addrOffset) ;
+  int8_t offset = EEPROM.read(addrOffset) ;
+  if ( offset >= configOffsetMin && offset <= configOffsetMax )
+    return offset ;
+  else
+    return configOffsetMin ;
+
 }
 
 
 int8_t readSensitivityFromMemory( void )
 {
-  return EEPROM.read(addrSensitivity) ;
+  int8_t sensitivity = EEPROM.read(addrSensitivity) ;
+  if ( sensitivity >= configSensitivityMin && sensitivity <= configSensitivityMax )
+    return sensitivity ;
+  else
+    return configSensitivityMin ;
 }
