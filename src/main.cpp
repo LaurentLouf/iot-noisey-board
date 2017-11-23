@@ -140,7 +140,7 @@ void animate()
   // Update the hue and create the color corresponding
   shiftedHue += deltaHue ;
   hue = shiftedHue >> SCALE_DELTA ;
-  HSBToRGB(hue, 255, 255, &red, &green, &blue) ;
+  HSBToRGB(hue, 255, 100, &red, &green, &blue) ;
   colorOn   = pixels.Color(red, green, blue);
   colorOff  = pixels.Color(0, 0, 0);
 

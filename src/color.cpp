@@ -26,40 +26,40 @@ void HSBToRGB( int16_t i_hue, uint8_t i_saturation, uint8_t i_brightness, uint8_
     switch(sector)
     {
       case 0:
-        *o_red = brightness * 255 ;
-        *o_green = t * 255;
-        *o_blue = p * 255;
+        *o_red    = gamma8[(uint8_t) (brightness * 255)] ;
+        *o_green  = gamma8[(uint8_t) (t * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (p * 255)] ;
       break;
 
       case 1:
-        *o_red = q * 255;
-        *o_green = brightness * 255 ;
-        *o_blue = p * 255;
+        *o_red    = gamma8[(uint8_t) (q * 255)] ;
+        *o_green  = gamma8[(uint8_t) (brightness * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (p * 255)] ;
       break;
 
       case 2:
-        *o_red = p * 255;
-        *o_green = brightness * 255 ;
-        *o_blue = t * 255;
+        *o_red    = gamma8[(uint8_t) (p * 255)] ;
+        *o_green  = gamma8[(uint8_t) (brightness * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (t * 255)] ;
       break;
 
       case 3:
-        *o_red = p * 255;
-        *o_green = q * 255;
-        *o_blue = brightness * 255 ;
+        *o_red    = gamma8[(uint8_t) (p * 255)] ;
+        *o_green  = gamma8[(uint8_t) (q * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (brightness * 255)] ;
       break;
 
       case 4:
-        *o_red = t * 255;
-        *o_green = p * 255;
-        *o_blue = brightness * 255 ;
+        *o_red    = gamma8[(uint8_t) (t * 255)] ;
+        *o_green  = gamma8[(uint8_t) (p * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (brightness * 255)] ;
       break;
 
       case 5:
       default:
-        *o_red = brightness * 255 ;
-        *o_green = p * 255;
-        *o_blue = q * 255;
+        *o_red    = gamma8[(uint8_t) (brightness * 255)] ;
+        *o_green  = gamma8[(uint8_t) (p * 255)] ;
+        *o_blue   = gamma8[(uint8_t) (q * 255)] ;
       break;
     }
   }
