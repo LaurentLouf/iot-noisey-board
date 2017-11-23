@@ -7,6 +7,7 @@
 #include <Ticker.h>
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoJson.h>
+#include <EEPROM.h>
 // Libraries for the ESP
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
@@ -17,6 +18,7 @@
 
 #include "Timer.h"
 #include "color.h"
+#include "config.h"
 
 #define HOST_API "http://192.168.1.148:3000/"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
@@ -41,6 +43,9 @@ int16_t previousMaxValueRunningAverage = 0 ;
 int32_t shiftedHue  = 120 << SCALE_DELTA ;
 int16_t deltaHue    = 0 ;
 bool stat = 0;
+
+int8_t  offsetSignal ;
+int8_t  sensitivitySignal ;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
@@ -199,8 +204,8 @@ void updateColor()
   int16_t nextHue ;
 
   // Compute the value of the next hue and delta between current and next hue
-  nextHue = maxValueRunningAverage - runningAverage ;
-  nextHue = nextHue > 120 ? 120 : nextHue ;
+  nextHue = sensitivitySignal * ( maxValueRunningAverage - runningAverage - offsetSignal) ;
+  nextHue = std::max<int16_t>( std::min<int16_t>(nextHue, 120), 0 ) ;
   nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
   deltaHue = ( (nextHue << SCALE_DELTA) - shiftedHue ) / nbAnimationBetweenUpdates ;
 
@@ -219,8 +224,9 @@ void setup()
 {
   WiFiManager wifiManager;
   String response ;
-  StaticJsonBuffer<128> jsonBuffer;
+  StaticJsonBuffer<256> jsonBuffer;
   int16_t HTTPCode ;
+  bool changeInMemory = false ;
 
   // Initialize serial communication, Wifi Manager and the pin of the built-in LED as an output pin
   Serial.begin(9600);
@@ -232,6 +238,7 @@ void setup()
   // Initiate HTTP client
   http.setReuse(true) ;
 
+  EEPROM.begin(10) ;
 
   // Start blinking the built-in LED repeatedly
   tickerLED.attach(0.6, tick);
@@ -259,12 +266,26 @@ void setup()
     Serial.printf("Received short ID from server %s\n", shortID) ;
     HTTPUserAgent += shortID ;
     http.setUserAgent(HTTPUserAgent) ;
+
+    // Get the config from the message or the EEPROM if not in the message
+    JsonVariant serverOffset      = root["config"]["offset"] ;
+    JsonVariant serverSensitivity = root["config"]["sensitivity"] ;
+    if (serverOffset.success() )
+      changeInMemory |= writeOffsetToMemory(root["config"]["offset"]) ;
+    if (serverSensitivity.success() )
+      changeInMemory |= writeSensitivityToMemory(root["config"]["sensitivity"]) ;
+
+    if ( changeInMemory )
+      EEPROM.commit() ; 
   }
   else
   {
-    Serial.println(HTTPCode) ;
-    Serial.println(response) ;
+    Serial.printf("Communication with server failed, code %d, message %s\n", HTTPCode, response.c_str() ) ;
   }
+
+  offsetSignal      = readOffsetFromMemory() ;
+  sensitivitySignal = readSensitivityFromMemory() ;
+  Serial.printf("Sensi %d, offset %d\n", sensitivitySignal, offsetSignal) ;
 
   // Perform a first measure to initialize the running averages
   measure() ;
