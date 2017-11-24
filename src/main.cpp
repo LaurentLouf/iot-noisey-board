@@ -33,7 +33,7 @@ const int16_t runningAverageBitScale    = 8 ;                                 /*
 const int16_t runningAverageFactorOld   = 230 ;                               /*!< The factor to apply to the old value for the running average */
 const int16_t runningAverageFactorNew   = (1 << runningAverageBitScale) - runningAverageFactorOld ; /*!< The factor to apply to the new value for the running average */
 
-char shortID[5]     = {'\0'} ;
+char shortID[7]     = {'\0'} ;
 byte wheelpos       = 0 ;
 int16_t sample      = 0 ;
 int16_t runningAverage = 0 ;
@@ -253,16 +253,16 @@ void setup()
 
   // If it managed to connect, send a message to the server
   char messageToApi[256] ;
-  sprintf(messageToApi, "{\"id\":\"%s\"}", WiFi.macAddress().c_str() ) ;
+  sprintf(messageToApi, "{\"id\":\"%d\"}", ESP.getChipId() ) ;
   Serial.println("Connected, sending ID to server.");
   sendPostRequest("/api/device", messageToApi, &HTTPCode, &response);
 
-  // Analyze the response from the server
+  // If the server answered
   if ( HTTPCode == 200 )
   {
     String HTTPUserAgent = "Noisey " ;
     JsonObject& root = jsonBuffer.parseObject(response);
-    strncpy(shortID, root["shortID"], 4) ;
+    strncpy(shortID, root["shortID"], 6) ;
     Serial.printf("Received short ID from server %s\n", shortID) ;
     HTTPUserAgent += shortID ;
     http.setUserAgent(HTTPUserAgent) ;
