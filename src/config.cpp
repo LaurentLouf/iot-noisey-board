@@ -43,3 +43,25 @@ int8_t readSensitivityFromMemory( void )
   else
     return configSensitivityMin ;
 }
+
+String getAPPassword()
+{
+  String password = "" ;
+  int8_t lengthPasswordEEPROM = EEPROM.read(addrPasswordLength), iPasswordChar ;
+
+  if ( lengthPasswordEEPROM > 0 )
+  {
+    for ( iPasswordChar = 0 ; iPasswordChar < configPasswordMaxLength ; iPasswordChar++ )
+    {
+      char passwordChar = EEPROM.read(addrPasswordValue + iPasswordChar) ;
+      if ( passwordChar != '\0' )
+        password += passwordChar ;
+      else
+        break ; 
+    }
+  }
+  else
+    password = FPSTR(configPasswordAP) ;
+
+  return password ;
+}

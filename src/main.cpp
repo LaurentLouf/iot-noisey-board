@@ -244,7 +244,7 @@ void setup()
   tickerLED.attach(0.6, tick);
 
   // Tries to autoconnect to a network called "Noisey"
-  if (!wifiManager.autoConnect("Noisey"))
+  if ( !wifiManager.autoConnect( "Noisey", getAPPassword().c_str() ) )
   {
     Serial.println("failed to connect and hit timeout");
     ESP.reset();
