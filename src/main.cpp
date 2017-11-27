@@ -10,15 +10,14 @@
 #include <EEPROM.h>
 // Libraries for the ESP
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 // WifiManager with its dependencies
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 
-#include "Timer.h"
 #include "color.h"
 #include "config.h"
+#include "server.h"
 
 #define HOST_API "http://192.168.1.148:3000/"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
@@ -44,19 +43,11 @@ int32_t shiftedHue  = 120 << SCALE_DELTA ;
 int16_t deltaHue    = 0 ;
 bool stat = 0;
 
-// Circular buffer to send data to the server
-int16_t noiseBufferServer[10] ;
-int8_t  iReadNoiseBufferServer  = 0 ;
-int8_t  iWriteNoiseBufferServer = 0 ;
-
-
 int8_t  offsetSignal ;
 int8_t  sensitivitySignal ;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
-Timer t;
-HTTPClient http ;
 
 /**
  * \fn void tick()
@@ -81,63 +72,6 @@ void configModeCallback (WiFiManager *myWiFiManager)
   Serial.println(WiFi.softAPIP());
   Serial.println(myWiFiManager->getConfigPortalSSID());
   tickerLED.attach(0.2, tick);
-}
-
-/**
- * \fn void sendPostRequest(char *i_endPoint, char *i_message, int16_t &o_HTTPCode, String &o_payload)
- * \param[in] i_endPoint End point to send the message to
- * \param[in] i_message Message to be sent in JSON format
- * \param[out] o_HTTPCode HTTP code returned by the server
- * \param[out] o_payload Payload received from the server
- * \brief Send a message (JSON) to an URL using HTTP POST
-*/
-void sendPostRequest(char *i_endPoint, char *i_message, int16_t *o_HTTPCode, String *o_payload)
-{
-  char completeURL[256] ;
-
-  // Build the complete URL
-  strcpy(completeURL, HOST_API) ;
-  if ( i_endPoint[0] == '/' && strlen(i_endPoint) > 1 )
-    strcat(completeURL, &i_endPoint[1]) ;
-  else if ( i_endPoint[0] != '/' )
-    strcat(completeURL, i_endPoint) ;
-
-  // Perform the POST
-  http.begin(completeURL);
-  http.addHeader("Content-Type", "application/json");
-  *o_HTTPCode = http.POST(i_message);
-  if ( o_payload != NULL )
-    *o_payload  = http.getString();
-  http.end();
-}
-
-
-/**
- * \fn void sendDataServer()
- * \brief Send data to the server
-*/
-void sendDataServer()
-{
-  int16_t HTTPCode = 0 ;
-  int32_t millisSend ;
-  char message[128] ;
-  String payload ;
-  StaticJsonBuffer<312> jsonBuffer;
-
-  JsonObject& root  = jsonBuffer.createObject();
-  JsonArray& data   = root.createNestedArray("noise") ;
-  root["id"]        = shortID ;
-  root["interval"]  = delayUpdateValue ;
-  do
-  {
-    data.add( noiseBufferServer[iReadNoiseBufferServer] ) ;
-    iReadNoiseBufferServer = ( iReadNoiseBufferServer + 1 ) % 10 ;
-  } while( iReadNoiseBufferServer != iWriteNoiseBufferServer );
-
-  root.printTo(message, sizeof(message)) ;
-  millisSend  = millis()  ;
-  sendPostRequest("/api/data", message, &HTTPCode, NULL) ;
-  Serial.println(millis() - millisSend) ;
 }
 
 /**
@@ -222,9 +156,7 @@ void updateColor()
   nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
   deltaHue = ( (nextHue << SCALE_DELTA) - shiftedHue ) / nbAnimationBetweenUpdates ;
 
-  // Save the data in a circular buffer
-  noiseBufferServer[iWriteNoiseBufferServer] = maxValueRunningAverage - runningAverage ;
-  iWriteNoiseBufferServer = ( iWriteNoiseBufferServer + 1 ) % 10 ;
+  addDataSendServer(maxValueRunningAverage - runningAverage) ;
 
   // Update the previous values of the running averages
   previousRunningAverage          = runningAverage ;
@@ -250,8 +182,6 @@ void setup()
   // Initiate LED strip
   pixels.begin();
   pixels.show() ;
-  // Initiate HTTP client
-  http.setReuse(true) ;
 
   EEPROM.begin(10) ;
 
@@ -270,17 +200,14 @@ void setup()
   char messageToApi[256] ;
   sprintf(messageToApi, "{\"id\":\"%d\"}", ESP.getChipId() ) ;
   Serial.println("Connected, sending ID to server.");
-  sendPostRequest("/api/device", messageToApi, &HTTPCode, &response);
+  sendPostRequest(HOST_API, "/api/device", messageToApi, &HTTPCode, &response);
 
   // If the server answered
   if ( HTTPCode == 200 )
   {
-    String HTTPUserAgent = "Noisey " ;
     JsonObject& root = jsonBuffer.parseObject(response);
     strncpy(shortID, root["shortID"], 6) ;
     Serial.printf("Received short ID from server %s\n", shortID) ;
-    HTTPUserAgent += shortID ;
-    http.setUserAgent(HTTPUserAgent) ;
 
     // Get the config from the message or the EEPROM if not in the message
     JsonVariant serverOffset      = root["config"]["offset"] ;
@@ -312,7 +239,6 @@ void setup()
   tickerMeasure.attach_ms(delayAnimation, measure) ;
   tickerAnimate.attach_ms(delayAnimation, animate) ;
   tickerUpdateColor.attach_ms(delayUpdateValue, updateColor) ;
-  t.every(delayDataServer, sendDataServer) ;
 }
 
 
@@ -322,5 +248,12 @@ void setup()
 */
 void loop()
 {
-  t.update();
+  static uint32_t lastEventMillis = 0 ;
+
+  if ( (uint32_t) (millis() - lastEventMillis) >= delayDataServer )
+  {
+    lastEventMillis = millis() ;
+    sendDataServer(HOST_API, shortID, delayUpdateValue) ;
+  }
+  delay(1) ;
 }
