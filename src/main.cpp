@@ -44,6 +44,12 @@ int32_t shiftedHue  = 120 << SCALE_DELTA ;
 int16_t deltaHue    = 0 ;
 bool stat = 0;
 
+// Circular buffer to send data to the server
+int16_t noiseBufferServer[10] ;
+int8_t  iReadNoiseBufferServer  = 0 ;
+int8_t  iWriteNoiseBufferServer = 0 ;
+
+
 int8_t  offsetSignal ;
 int8_t  sensitivitySignal ;
 
@@ -116,11 +122,18 @@ void sendDataServer()
   int32_t millisSend ;
   char message[128] ;
   String payload ;
-  StaticJsonBuffer<200> jsonBuffer;
+  StaticJsonBuffer<312> jsonBuffer;
 
   JsonObject& root  = jsonBuffer.createObject();
+  JsonArray& data   = root.createNestedArray("noise") ;
   root["id"]        = shortID ;
-  root["noise"]     = (int16_t) (maxValueRunningAverage - runningAverage) ;
+  root["interval"]  = delayUpdateValue ;
+  do
+  {
+    data.add( noiseBufferServer[iReadNoiseBufferServer] ) ;
+    iReadNoiseBufferServer = ( iReadNoiseBufferServer + 1 ) % 10 ;
+  } while( iReadNoiseBufferServer != iWriteNoiseBufferServer );
+
   root.printTo(message, sizeof(message)) ;
   millisSend  = millis()  ;
   sendPostRequest("/api/data", message, &HTTPCode, NULL) ;
@@ -209,7 +222,9 @@ void updateColor()
   nextHue = map(-nextHue, -120, 0, 0, 120); // Map the strength of the signal to a hue value : green is at 120 and red at 0
   deltaHue = ( (nextHue << SCALE_DELTA) - shiftedHue ) / nbAnimationBetweenUpdates ;
 
-  Serial.printf("cH %d nH %d, d %d\n", shiftedHue, nextHue << SCALE_DELTA, deltaHue );
+  // Save the data in a circular buffer
+  noiseBufferServer[iWriteNoiseBufferServer] = maxValueRunningAverage - runningAverage ;
+  iWriteNoiseBufferServer = ( iWriteNoiseBufferServer + 1 ) % 10 ;
 
   // Update the previous values of the running averages
   previousRunningAverage          = runningAverage ;
