@@ -7,6 +7,9 @@ int16_t noiseBufferServer[SERVER_SIZE_BUFFER_DATA] ;
 int8_t  iReadNoiseBufferServer  = 0 ;
 int8_t  iWriteNoiseBufferServer = 0 ;
 
+const char* fingerprint = "9E 53 40 67 8B 96 1B 50 72 96 78 12 33 F8 FB 64 E8 96 C1 83";
+
+
 /**
  * \fn void sendPostRequest(char *i_hostURL, char *i_endPoint, char *i_message, int16_t *o_HTTPCode, String *o_payload)
  * \param[in] i_hostURL URL of the server
@@ -20,17 +23,9 @@ void sendPostRequest(char *i_hostURL, char *i_endPoint, char *i_message, int16_t
 {
   char completeURL[256] ;
   HTTPClient http ;
-  http.useHTTP10(true) ; // Reduce the size of the headers sent
-
-  // Build the complete URL
-  strcpy(completeURL, i_hostURL) ;
-  if ( i_endPoint[0] == '/' && strlen(i_endPoint) > 1 )
-    strcat(completeURL, &i_endPoint[1]) ;
-  else if ( i_endPoint[0] != '/' )
-    strcat(completeURL, i_endPoint) ;
 
   // Perform the POST
-  http.begin(completeURL);
+  http.begin(i_hostURL, 443, i_endPoint, true, fingerprint);
   http.addHeader("Content-Type", "application/json");
   *o_HTTPCode = http.POST(i_message);
   if ( o_payload != NULL )
