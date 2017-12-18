@@ -19,7 +19,7 @@
 #include "config.h"
 #include "server.h"
 
-#define HOST_API "192.168.0.1"
+#define HOST_API "noisey"
 #define NUMPIXELS      24 /*!< The number of pixels in the LED strip */
 #define PIN_NEOPIXEL   12 /*!< The PIN linked to the data input of the LED */
 #define SCALE_DELTA    10 /*!< Number of bits to shift the value of hue to apply delta between current and next values */
@@ -202,7 +202,7 @@ void setup()
   char messageToApi[256] ;
   sprintf(messageToApi, "{\"id\":\"%d\"}", ESP.getChipId() ) ;
   Serial.printf("Connected to %s, sending ID to server.\n", WiFi.SSID().c_str() );
-  sendPostRequest(HOST_API, "/api/device", messageToApi, &HTTPCode, &response);
+  sendPostRequest(HOST_API, "/api/device/", messageToApi, &HTTPCode, &response);
 
   // If the server answered
   if ( HTTPCode == 200 )

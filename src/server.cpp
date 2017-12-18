@@ -7,7 +7,7 @@ int16_t noiseBufferServer[SERVER_SIZE_BUFFER_DATA] ;
 int8_t  iReadNoiseBufferServer  = 0 ;
 int8_t  iWriteNoiseBufferServer = 0 ;
 
-const char* fingerprint = "11:48:A4:16:74:8A:FD:1F:FD:CA:31:E6:F7:A8:42:9C:24:30:86:12";
+const char* fingerprint = "FB:AD:09:02:B3:19:A5:F7:5F:27:A8:93:16:98:D7:A0:9C:27:D9:AE";
 
 
 /**
