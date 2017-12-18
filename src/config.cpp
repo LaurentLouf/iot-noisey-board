@@ -15,7 +15,7 @@ bool writeOffsetToMemory( int8_t i_offset )
 
 bool writeSensitivityToMemory( int8_t i_sensitivity )
 {
-  if ( i_sensitivity >= configSensitivityMin && i_sensitivity <= configSensitivityMax && EEPROM.read(addrSensitivity) != i_sensitivity )
+  if ( i_sensitivity >= configSensitivityServerMin && i_sensitivity <= configSensitivityServerMax && EEPROM.read(addrSensitivity) != i_sensitivity )
   {
     EEPROM.write(addrSensitivity, i_sensitivity) ;
     return true ;
@@ -53,10 +53,10 @@ int8_t readOffsetFromMemory( void )
 int8_t readSensitivityFromMemory( void )
 {
   int8_t sensitivity = EEPROM.read(addrSensitivity) ;
-  if ( sensitivity >= configSensitivityMin && sensitivity <= configSensitivityMax )
-    return sensitivity ;
+  if ( sensitivity >= configSensitivityServerMin && sensitivity <= configSensitivityServerMax )
+    return mapSensitivityServerToValue(sensitivity) ;
   else
-    return configSensitivityMin ;
+    return mapSensitivityServerToValue(configSensitivityServerMax) ;
 }
 
 
@@ -75,6 +75,12 @@ int32_t readDelayDataServerFromMemory( void )
 }
 
 
+
+
+int8_t  mapSensitivityServerToValue ( int8_t i_sensitivityServer )
+{
+  return (i_sensitivityServer * -1) + 11 ;
+}
 String getAPPassword()
 {
   String password = "" ;

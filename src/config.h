@@ -14,8 +14,8 @@ const int32_t addrDelayDataServer   = addrPasswordValue + configPasswordMaxLengt
 
 const int8_t  configOffsetMin = 0 ;
 const int8_t  configOffsetMax = 100 ;
-const int8_t  configSensitivityMin = 1 ;
-const int8_t  configSensitivityMax = 10 ;
+const int8_t  configSensitivityServerMin = 1 ;
+const int8_t  configSensitivityServerMax = 10 ;
 const int8_t  configDelayDataServerMin = 0 ;
 const int8_t  configDelayDataServerMax = 2 ;
 static const char configPasswordAP[] PROGMEM = "iot-makers";
@@ -29,6 +29,7 @@ bool writeDelayDataServerToMemory( int8_t i_iDelayDataServer ) ;
 int8_t readOffsetFromMemory( void ) ;
 int8_t readSensitivityFromMemory( void ) ;
 int32_t readDelayDataServerFromMemory( void ) ;
+int8_t  mapSensitivityServerToValue ( int8_t i_sensitivityServer ) ;
 String getAPPassword() ;
 
 #endif
