@@ -185,7 +185,7 @@ void setup()
   pixels.begin();
   pixels.show() ;
 
-  EEPROM.begin(10) ;
+  EEPROM.begin(64) ;
 
   // Start blinking the built-in LED repeatedly
   tickerLED.attach(0.6, tick);
