@@ -40,7 +40,6 @@ int16_t maxValueRunningAverage = 0 ;
 int16_t previousMaxValueRunningAverage = 0 ;
 int32_t shiftedHue  = 120 << SCALE_DELTA ;
 int16_t deltaHue    = 0 ;
-bool stat = 0;
 
 int8_t  offsetSignal ;
 int8_t  sensitivitySignal ;
@@ -180,6 +179,8 @@ void setup()
   Serial.begin(9600);
   pinMode(BUILTIN_LED, OUTPUT);
   wifiManager.setAPCallback(configModeCallback);
+  wifiManager.setDebugOutput(true) ;
+
   // Initiate LED strip
   pixels.begin();
   pixels.show() ;
@@ -192,7 +193,7 @@ void setup()
   // Tries to autoconnect to a network called "Noisey"
   if ( !wifiManager.autoConnect( "Noisey", getAPPassword().c_str() ) )
   {
-    Serial.println("failed to connect and hit timeout");
+    Serial.println(F("failed to connect and hit timeout"));
     ESP.reset();
     delay(1000);
   }
@@ -200,7 +201,7 @@ void setup()
   // If it managed to connect, send a message to the server
   char messageToApi[256] ;
   sprintf(messageToApi, "{\"id\":\"%d\"}", ESP.getChipId() ) ;
-  Serial.println("Connected, sending ID to server.");
+  Serial.printf("Connected to %s, sending ID to server.\n", WiFi.SSID().c_str() );
   sendPostRequest(HOST_API, "/api/device", messageToApi, &HTTPCode, &response);
 
   // If the server answered
