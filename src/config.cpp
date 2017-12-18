@@ -33,6 +33,13 @@ bool writeDelayDataServerToMemory( int8_t i_iDelayDataServer )
   }
   return false ;
 }
+
+
+bool writeBrightnessToMemory( int8_t i_brightness )
+{
+  if ( i_brightness >= configBrightnessServerMin && i_brightness <= configBrightnessServerMax && EEPROM.read(addrBrightness) != i_brightness )
+  {
+    EEPROM.write(addrBrightness, i_brightness) ;
     return true ;
   }
   return false ;
@@ -46,7 +53,6 @@ int8_t readOffsetFromMemory( void )
     return offset ;
   else
     return configOffsetMin ;
-
 }
 
 
@@ -75,12 +81,29 @@ int32_t readDelayDataServerFromMemory( void )
 }
 
 
+uint8_t readBrightnessFromMemory( void )
+{
+  int8_t brightness = EEPROM.read(addrBrightness) ;
+  if ( brightness >= configBrightnessServerMin && brightness <= configBrightnessServerMax )
+    return mapBrightnessServerToValue(brightness) ;
+  else
+    return mapBrightnessServerToValue(configBrightnessServerMin + 1) ;
+}
 
 
 int8_t  mapSensitivityServerToValue ( int8_t i_sensitivityServer )
 {
   return (i_sensitivityServer * -1) + 11 ;
 }
+
+uint8_t  mapBrightnessServerToValue ( int8_t i_brightnessServer )
+{
+  if( i_brightnessServer == 0 )
+    return 0 ;
+  else
+    return 48 + 16 * i_brightnessServer ;
+}
+
 String getAPPassword()
 {
   String password = "" ;

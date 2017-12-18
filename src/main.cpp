@@ -44,7 +44,7 @@ int16_t deltaHue    = 0 ;
 int8_t  offsetSignal ;
 int8_t  sensitivitySignal ;
 int32_t delayDataServer ;   /*!< Delay betwwen two POST requests to the distant server, in ms */
-
+uint8_t brightness ;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
@@ -92,7 +92,7 @@ void animate()
   // Update the hue and create the color corresponding
   shiftedHue += deltaHue ;
   hue = shiftedHue >> SCALE_DELTA ;
-  HSBToRGB(hue, 255, 100, &red, &green, &blue) ;
+  HSBToRGB(hue, 255, brightness, &red, &green, &blue) ;
   colorOn   = pixels.Color(red, green, blue);
   colorOff  = pixels.Color(0, 0, 0);
 
@@ -214,13 +214,16 @@ void setup()
     // Get the config from the message or the EEPROM if not in the message
     JsonVariant serverOffset      = root["config"]["offset"] ;
     JsonVariant serverSensitivity = root["config"]["sensitivity"] ;
-    JsonVariant serverDelayDataServer = root["config"]["updateRate"] ;
+    JsonVariant serverBrightness  = root["config"]["luminosity"] ;
+    JsonVariant serverDelayDataServer   = root["config"]["updateRate"] ;
     if (serverOffset.success() )
       changeInMemory |= writeOffsetToMemory(root["config"]["offset"]) ;
     if (serverSensitivity.success() )
       changeInMemory |= writeSensitivityToMemory(root["config"]["sensitivity"]) ;
     if (serverDelayDataServer.success() )
       changeInMemory |= writeDelayDataServerToMemory(root["config"]["updateRate"]) ;
+    if (serverBrightness.success() )
+      changeInMemory |= writeBrightnessToMemory(root["config"]["luminosity"]) ;
 
     if ( changeInMemory )
       EEPROM.commit() ;
@@ -233,7 +236,8 @@ void setup()
   offsetSignal      = readOffsetFromMemory() ;
   sensitivitySignal = readSensitivityFromMemory() ;
   delayDataServer   = readDelayDataServerFromMemory() ;
-  Serial.printf("Sensi %d, offset %d, delay %d\n", sensitivitySignal, offsetSignal, delayDataServer) ;
+  brightness        = readBrightnessFromMemory() ;
+  Serial.printf("Sensi %d, offset %d, delay %d, brightness %d\n", sensitivitySignal, offsetSignal, delayDataServer, brightness) ;
 
   // Perform a first measure to initialize the running averages
   measure() ;
