@@ -24,14 +24,15 @@ bool writeSensitivityToMemory( int8_t i_sensitivity )
 }
 
 
-bool writeDelayDataServerToMemory( int32_t i_delayDataServer )
+bool writeDelayDataServerToMemory( int8_t i_iDelayDataServer )
 {
-  if ( i_delayDataServer >= configDelayDataServerMin && i_delayDataServer <= configDelayDataServerMax && readDelayDataServerFromMemory() != i_delayDataServer )
+  if ( i_iDelayDataServer >= configDelayDataServerMin && i_iDelayDataServer <= configDelayDataServerMax && readDelayDataServerFromMemory() != configDelayDataServer[i_iDelayDataServer] )
   {
-    EEPROM.write(addrDelayDataServer, i_delayDataServer & 0xFF) ;
-    EEPROM.write(addrDelayDataServer + 1, (i_delayDataServer >> 8 ) & 0xFF) ;
-    EEPROM.write(addrDelayDataServer + 2, (i_delayDataServer >> 16 ) & 0xFF) ;
-    EEPROM.write(addrDelayDataServer + 3, (i_delayDataServer >> 24 ) & 0xFF) ;
+    EEPROM.write(addrDelayDataServer, i_iDelayDataServer) ;
+    return true ;
+  }
+  return false ;
+}
     return true ;
   }
   return false ;
@@ -61,13 +62,16 @@ int8_t readSensitivityFromMemory( void )
 
 int32_t readDelayDataServerFromMemory( void )
 {
-  int32_t delayDataServer = EEPROM.read(addrDelayDataServer) + EEPROM.read(addrDelayDataServer + 1) << 8 ;
-  delayDataServer += EEPROM.read(addrDelayDataServer + 2) << 16 + EEPROM.read(addrDelayDataServer + 3) << 24 ;
+  int8_t iDelayDataServer = EEPROM.read(addrDelayDataServer) ;
 
-  if ( delayDataServer >= configDelayDataServerMin && delayDataServer <= configDelayDataServerMax )
-    return delayDataServer ;
+  if ( iDelayDataServer >= configDelayDataServerMin && iDelayDataServer <= configDelayDataServerMax )
+  {
+    return configDelayDataServer[iDelayDataServer] ;
+  }
   else
-    return configDelayDataServerMin ;
+  {
+    return configDelayDataServer[configDelayDataServerMin] ;
+  }
 }
 
 

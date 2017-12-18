@@ -16,14 +16,16 @@ const int8_t  configOffsetMin = 0 ;
 const int8_t  configOffsetMax = 100 ;
 const int8_t  configSensitivityMin = 1 ;
 const int8_t  configSensitivityMax = 10 ;
-const int32_t configDelayDataServerMin = 10000 ;
-const int32_t configDelayDataServerMax = 300000 ;
+const int8_t  configDelayDataServerMin = 0 ;
+const int8_t  configDelayDataServerMax = 2 ;
 static const char configPasswordAP[] PROGMEM = "iot-makers";
+
+const int32_t configDelayDataServer[3] = {300000, 60000, 10000} ;
 
 
 bool writeOffsetToMemory( int8_t i_offset ) ;
 bool writeSensitivityToMemory( int8_t i_sensitivity ) ;
-bool writeDelayDataServerToMemory( int32_t i_delayDataServer ) ;
+bool writeDelayDataServerToMemory( int8_t i_iDelayDataServer ) ;
 int8_t readOffsetFromMemory( void ) ;
 int8_t readSensitivityFromMemory( void ) ;
 int32_t readDelayDataServerFromMemory( void ) ;
