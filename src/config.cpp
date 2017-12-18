@@ -24,6 +24,20 @@ bool writeSensitivityToMemory( int8_t i_sensitivity )
 }
 
 
+bool writeDelayDataServerToMemory( int32_t i_delayDataServer )
+{
+  if ( i_delayDataServer >= configDelayDataServerMin && i_delayDataServer <= configDelayDataServerMax && readDelayDataServerFromMemory() != i_delayDataServer )
+  {
+    EEPROM.write(addrDelayDataServer, i_delayDataServer & 0xFF) ;
+    EEPROM.write(addrDelayDataServer + 1, (i_delayDataServer >> 8 ) & 0xFF) ;
+    EEPROM.write(addrDelayDataServer + 2, (i_delayDataServer >> 16 ) & 0xFF) ;
+    EEPROM.write(addrDelayDataServer + 3, (i_delayDataServer >> 24 ) & 0xFF) ;
+    return true ;
+  }
+  return false ;
+}
+
+
 int8_t readOffsetFromMemory( void )
 {
   int8_t offset = EEPROM.read(addrOffset) ;
@@ -44,6 +58,19 @@ int8_t readSensitivityFromMemory( void )
     return configSensitivityMin ;
 }
 
+
+int32_t readDelayDataServerFromMemory( void )
+{
+  int32_t delayDataServer = EEPROM.read(addrDelayDataServer) + EEPROM.read(addrDelayDataServer + 1) << 8 ;
+  delayDataServer += EEPROM.read(addrDelayDataServer + 2) << 16 + EEPROM.read(addrDelayDataServer + 3) << 24 ;
+
+  if ( delayDataServer >= configDelayDataServerMin && delayDataServer <= configDelayDataServerMax )
+    return delayDataServer ;
+  else
+    return configDelayDataServerMin ;
+}
+
+
 String getAPPassword()
 {
   String password = "" ;
@@ -57,7 +84,7 @@ String getAPPassword()
       if ( passwordChar != '\0' )
         password += passwordChar ;
       else
-        break ; 
+        break ;
     }
   }
   else

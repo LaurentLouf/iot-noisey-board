@@ -26,7 +26,6 @@
 
 const int16_t delayAnimation            = 80 ;                                /*!< Delay betwwen two states of the animation of the LED strip, in ms */
 const int32_t delayUpdateValue          = NUMPIXELS * delayAnimation ;        /*!< Delay betwwen two updates of the color to be displayed, in ms */
-const int32_t delayDataServer           = 10000 ;                             /*!< Delay betwwen two POST requests to the distant server, in ms */
 const int16_t nbAnimationBetweenUpdates = delayUpdateValue / delayAnimation ; /*!< Number of animations of the LED strip between two updates of the color */
 const int16_t runningAverageBitScale    = 8 ;                                 /*!< The number of bits for the running average factor */
 const int16_t runningAverageFactorOld   = 230 ;                               /*!< The factor to apply to the old value for the running average */
@@ -45,6 +44,8 @@ bool stat = 0;
 
 int8_t  offsetSignal ;
 int8_t  sensitivitySignal ;
+int32_t delayDataServer ;   /*!< Delay betwwen two POST requests to the distant server, in ms */
+
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 Ticker tickerLED, tickerMeasure, tickerUpdateColor, tickerAnimate ;
@@ -212,13 +213,16 @@ void setup()
     // Get the config from the message or the EEPROM if not in the message
     JsonVariant serverOffset      = root["config"]["offset"] ;
     JsonVariant serverSensitivity = root["config"]["sensitivity"] ;
+    JsonVariant serverDelayDataServer = root["config"]["updateRate"] ;
     if (serverOffset.success() )
       changeInMemory |= writeOffsetToMemory(root["config"]["offset"]) ;
     if (serverSensitivity.success() )
       changeInMemory |= writeSensitivityToMemory(root["config"]["sensitivity"]) ;
+    if (serverDelayDataServer.success() )
+      changeInMemory |= writeDelayDataServerToMemory(root["config"]["updateRate"]) ;
 
     if ( changeInMemory )
-      EEPROM.commit() ; 
+      EEPROM.commit() ;
   }
   else
   {
@@ -227,7 +231,8 @@ void setup()
 
   offsetSignal      = readOffsetFromMemory() ;
   sensitivitySignal = readSensitivityFromMemory() ;
-  Serial.printf("Sensi %d, offset %d\n", sensitivitySignal, offsetSignal) ;
+  delayDataServer   = readDelayDataServerFromMemory() ;
+  Serial.printf("Sensi %d, offset %d, delay %d\n", sensitivitySignal, offsetSignal, delayDataServer) ;
 
   // Perform a first measure to initialize the running averages
   measure() ;
