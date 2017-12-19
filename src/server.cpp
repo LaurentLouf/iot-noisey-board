@@ -2,10 +2,11 @@
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
+
 // Circular buffer to send data to the server
 int16_t noiseBufferServer[SERVER_SIZE_BUFFER_DATA] ;
-int8_t  iReadNoiseBufferServer  = 0 ;
-int8_t  iWriteNoiseBufferServer = 0 ;
+uint8_t iReadNoiseBufferServer  = 0 ;
+uint8_t iWriteNoiseBufferServer = 0 ;
 
 const char* fingerprint = "FB:AD:09:02:B3:19:A5:F7:5F:27:A8:93:16:98:D7:A0:9C:27:D9:AE";
 
@@ -42,25 +43,39 @@ void sendPostRequest(char *i_hostURL, char *i_endPoint, char *i_message, int16_t
 */
 void sendDataServer(char *i_hostURL, char *i_shortID, int32_t i_delayUpdateValue )
 {
-  int16_t HTTPCode = 0 ;
+  bool firstMessage = true ;
+  int16_t HTTPCode  = 0, nbElements = 0 ;
   int32_t millisSend ;
-  char message[128] ;
-  String payload ;
-  StaticJsonBuffer<312> jsonBuffer;
 
-  JsonObject& root  = jsonBuffer.createObject();
-  JsonArray& data   = root.createNestedArray("noise") ;
-  root["id"]        = i_shortID ;
-  root["interval"]  = i_delayUpdateValue ;
+  nbElements = iWriteNoiseBufferServer - iReadNoiseBufferServer ;
+  if ( nbElements < 0 )
+    nbElements += SERVER_SIZE_BUFFER_DATA ;
+
   do
   {
-    data.add( noiseBufferServer[iReadNoiseBufferServer] ) ;
-    iReadNoiseBufferServer = ( iReadNoiseBufferServer + 1 ) % SERVER_SIZE_BUFFER_DATA ;
+    char message[256] ;
+    StaticJsonBuffer<512> jsonBuffer;
+
+    JsonObject& root   = jsonBuffer.createObject();
+    JsonArray& data    = root.createNestedArray("noise") ;
+    root["id"]         = i_shortID ;
+    root["interval"]   = i_delayUpdateValue ;
+    root["nbElements"] = nbElements ;
+    root["first"]      = firstMessage ;
+
+    for ( int8_t iData = 0 ; iData < SERVER_SIZE_MESSAGE_DATA && iReadNoiseBufferServer != iWriteNoiseBufferServer ; iData++ )
+    {
+      data.add( noiseBufferServer[iReadNoiseBufferServer] ) ;
+      iReadNoiseBufferServer = ( iReadNoiseBufferServer + 1 ) % SERVER_SIZE_BUFFER_DATA ;
+    }
+
+    root.printTo(message, sizeof(message)) ;
+    millisSend  = millis()  ;
+    sendPostRequest(i_hostURL, "/api/data/", message, &HTTPCode, NULL) ;
+    firstMessage = false ;
+
   } while( iReadNoiseBufferServer != iWriteNoiseBufferServer );
 
-  root.printTo(message, sizeof(message)) ;
-  millisSend  = millis()  ;
-  sendPostRequest(i_hostURL, "/api/data", message, &HTTPCode, NULL) ;
 }
 
 /**

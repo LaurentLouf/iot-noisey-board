@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <Arduino.h>
 
-#define SERVER_SIZE_BUFFER_DATA 10
+#define SERVER_SIZE_BUFFER_DATA 175 /*!< The size of the buffer containing the data to send to the server */
+#define SERVER_SIZE_MESSAGE_DATA 20 /*!< The number of values from the buffer to send to the server in one message */
+
 
 void sendPostRequest(char *i_hostURL, char *i_endPoint, char *i_message, int16_t *o_HTTPCode, String *o_payload) ;
 
